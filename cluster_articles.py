@@ -6,6 +6,7 @@ from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 import hdbscan
 
+# RDS connection details
 DB_PARAMS = {
     "host": "newschain-db.cr4wc8ma675y.us-east-2.rds.amazonaws.com",
     "database": "newschain",
@@ -21,9 +22,10 @@ custom_stop_words = ['the', 'and', 'did', 'is', 'said', 'reports', 'was', 'were'
 def cluster_articles():
     print("Connecting to RDS and fetching articles...")
     conn = psycopg2.connect(**DB_PARAMS)
+    cur = conn.cursor()
+    
     query = "SELECT id, title, content, source, pub_date, topic FROM articles"
     df = pd.read_sql(query, conn)
-    conn.close()
     print(f"Fetched {len(df)} articles from RDS.")
 
     print("Preprocessing article content...")
@@ -46,7 +48,17 @@ def cluster_articles():
     n_clusters = len(df['hdbscan_cluster'].unique()) - (1 if -1 in df['hdbscan_cluster'].values else 0)
     print(f"Found {n_clusters} clusters (-1 is noise, {len(df[df['hdbscan_cluster'] == -1])} articles).")
 
-    print("Saving results...")
+    print("Updating RDS with cluster assignments...")
+    for index, row in df.iterrows():
+        cur.execute("""
+            UPDATE articles 
+            SET hdbscan_cluster = %s 
+            WHERE id = %s
+        """, (row['hdbscan_cluster'], row['id']))
+    
+    conn.commit()
+
+    print("Saving results to S3...")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
     csv_file = f"clustered_articles_{timestamp}.csv"
     df[['id', 'title', 'source', 'pub_date', 'topic', 'hdbscan_cluster']].to_csv(csv_file, index=False)
@@ -65,6 +77,8 @@ def cluster_articles():
         elif cluster_id == -1:
             print(f"\nNoise (-1) ({len(df[df['hdbscan_cluster'] == -1])} articles):")
 
+    cur.close()
+    conn.close()
     print("Clustering process completed.")
 
 if __name__ == "__main__":
