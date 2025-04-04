@@ -1,76 +1,77 @@
 {
-  "Version": "2020-12-01",
-  "Metadata": {
-      "PipelineArn": "arn:aws:sagemaker:us-east-2:858286809900:pipeline/newschain-clustering-pipeline",
-      "RoleArn": "arn:aws:iam::858286809900:role/service-role/AmazonSageMaker-ExecutionRole-20250327T113871",
-      "CreatedBy": "default-20250327T113870",
-      "LastModifiedBy": "default-20250327T113870",
-      "CreationTime": "2025-04-04T01:11:38.000Z",
-      "LastModifiedTime": "2025-04-04T01:11:38.000Z",
-      "Tags": "sagemaker:user-profile-arn: arn:aws:sagemaker:us-east-2:858286809900:user-profile/d-ykar8sgyppez/default-20250327T113870, sagemaker:domain-arn: arn:aws:sagemaker:us-east-2:858286809900:domain/d-ykar8sgyppez"
-  },
-  "Parameters": [],
-  "Steps": [
-      {
-          "Name": "ClusterArticlesStep",
-          "Type": "Processing",
-          "Arguments": {
-              "ProcessingResources": {
-                  "ClusterConfig": {
-                      "InstanceType": "ml.t3.medium",
-                      "InstanceCount": 1,
-                      "VolumeSizeInGB": 30
-                  }
-              },
-              "AppSpecification": {
-                  "ImageUri": "433757028032.dkr.ecr.us-east-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3",
-                  "ContainerArguments": [
-                      "python",
-                      "cluster_articles.py",
-                      "--output-signal"
-                  ],
-                  "ContainerEntrypoint": [
-                      "python3"
-                  ]
-              },
-              "ProcessingInputs": [
-                  {
-                      "InputName": "script",
-                      "AppManaged": false,
-                      "S3Input": {
-                          "S3Uri": "s3://newschain-bucket/cluster_articles.py",
-                          "LocalPath": "/opt/ml/processing/input/code",
-                          "S3DataType": "S3Prefix",
-                          "S3InputMode": "File",
-                          "S3DataDistributionType": "FullyReplicated"
-                      }
-                  },
-                  {
-                      "InputName": "bundle",
-                      "AppManaged": false,
-                      "S3Input": {
-                          "S3Uri": "s3://newschain-bucket/global-bundle.pem",
-                          "LocalPath": "/opt/ml/processing/input/bundle",
-                          "S3DataType": "S3Prefix",
-                          "S3InputMode": "File",
-                          "S3DataDistributionType": "FullyReplicated"
-                      }
-                  }
-              ],
-              "ProcessingOutputConfig": {
-                  "Outputs": [
-                      {
-                          "OutputName": "clustering-output",
-                          "AppManaged": false,
-                          "S3Output": {
-                              "S3Uri": "s3://newschain-bucket/clustered_articles_output/",
-                              "LocalPath": "/opt/ml/processing/output",
-                              "S3UploadMode": "EndOfJob"
-                          }
-                      }
-                  ]
-              }
-          }
-      }
-  ]
+    "Version": "2020-12-01",
+    "Metadata": {
+        "PipelineArn": "arn:aws:sagemaker:us-east-2:858286809900:pipeline/newschain-clustering-pipeline",
+        "RoleArn": "arn:aws:iam::858286809900:role/service-role/AmazonSageMaker-ExecutionRole-20250327T113871",
+        "CreatedBy": "default-20250327T113870",
+        "LastModifiedBy": "default-20250327T113870",
+        "CreationTime": "2025-04-04T01:11:38.000Z",
+        "LastModifiedTime": "2025-04-04T01:11:38.000Z",
+        "Tags": "sagemaker:user-profile-arn: arn:aws:sagemaker:us-east-2:858286809900:user-profile/d-ykar8sgyppez/default-20250327T113870, sagemaker:domain-arn: arn:aws:sagemaker:us-east-2:858286809900:domain/d-ykar8sgyppez"
+    },
+    "Parameters": [],
+    "Steps": [
+        {
+            "Name": "ClusterArticlesStep",
+            "Type": "Processing",
+            "Arguments": {
+                "ProcessingResources": {
+                    "ClusterConfig": {
+                        "InstanceType": "ml.t3.medium",
+                        "InstanceCount": 1,
+                        "VolumeSizeInGB": 30
+                    }
+                },
+                "AppSpecification": {
+                    "ImageUri": "433757028032.dkr.ecr.us-east-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3",
+                    "ContainerArguments": [
+                        "python",
+                        "cluster_articles.py",
+                        "--output-signal"
+                    ],
+                    "ContainerEntrypoint": [
+                        "python3"
+                    ]
+                },
+                "ProcessingInputs": [
+                    {
+                        "InputName": "script",
+                        "AppManaged": false,
+                        "S3Input": {
+                            "S3Uri": "s3://newschain-bucket/cluster_articles.py",
+                            "LocalPath": "/opt/ml/processing/input/code",
+                            "S3DataType": "S3Prefix",
+                            "S3InputMode": "File",
+                            "S3DataDistributionType": "FullyReplicated"
+                        }
+                    },
+                    {
+                        "InputName": "bundle",
+                        "AppManaged": false,
+                        "S3Input": {
+                            "S3Uri": "s3://newschain-bucket/global-bundle.pem",
+                            "LocalPath": "/opt/ml/processing/input/bundle",
+                            "S3DataType": "S3Prefix",
+                            "S3InputMode": "File",
+                            "S3DataDistributionType": "FullyReplicated"
+                        }
+                    }
+                ],
+                "ProcessingOutputConfig": {
+                    "Outputs": [
+                        {
+                            "OutputName": "clustering-output",
+                            "AppManaged": false,
+                            "S3Output": {
+                                "S3Uri": "s3://newschain-bucket/clustered_articles_output/",
+                                "LocalPath": "/opt/ml/processing/output",
+                                "S3UploadMode": "EndOfJob"
+                            }
+                        }
+                    ]
+                },
+                "RoleArn": "arn:aws:iam::858286809900:role/service-role/AmazonSageMaker-ExecutionRole-20250327T113871"
+            }
+        }
+    ]
 }
