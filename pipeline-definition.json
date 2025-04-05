@@ -23,16 +23,16 @@
                     }
                 },
                 "AppSpecification": {
-                    "ImageUri": "433757028032.dkr.ecr.us-east-2.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3",
-                    "ContainerArguments": [
-                        "python",
-                        "cluster_articles.py",
-                        "--output-signal"
-                    ],
-                    "ContainerEntrypoint": [
-                        "python3"
-                    ]
-                },
+    "ImageUri": "366743142698.dkr.ecr.us-east-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
+    "ContainerArguments": [
+        "python",
+        "cluster_articles.py",
+        "--output-signal"
+    ],
+    "ContainerEntrypoint": [
+        "python3"
+    ]
+},
                 "ProcessingInputs": [
                     {
                         "InputName": "script",
