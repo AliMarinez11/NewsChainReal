@@ -1,4 +1,5 @@
 import psycopg2
+import os
 import pandas as pd
 import boto3
 from datetime import datetime
