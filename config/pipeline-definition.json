@@ -1,41 +1,42 @@
 {
-    "Version": "2020-12-01",
-    "Metadata": {},
-    "Parameters": [],
-    "PipelineExperimentConfig": {
-      "ExperimentName": "newschain-clustering-experiment",
-      "TrialName": "newschain-clustering-trial"
-    },
-    "Steps": [
-      {
-        "Name": "ClusteringJob",
-        "Type": "Processing",
-        "Arguments": {
-          "ProcessingJobName": "newschain-clustering-job",
-          "ProcessingResources": {
-            "ClusterConfig": {
-              "InstanceCount": 1,
-              "InstanceType": "ml.t3.medium",
-              "VolumeSizeInGB": 30
-            }
-          },
-          "AppSpecification": {
-            "ImageUri": "858286809900.dkr.ecr.us-east-2.amazonaws.com/newschain-clustering:latest",
-            "ContainerEntrypoint": ["python", "/app/cluster_articles.py"],
-            "Environment": {
-              "EXECUTION_ID": "{PipelineExecutionArn}"
-            }
-          },
-          "RoleArn": "arn:aws:iam::858286809900:role/service-role/AmazonSageMaker-ExecutionRole-20250327T115006",
-          "ProcessingInputs": [],
-          "NetworkConfig": {
-            "EnableNetworkIsolation": false,
-            "VpcConfig": {
-              "Subnets": ["subnet-01838092148514c1f"],
-              "SecurityGroupIds": ["sg-021a4fa306a0b0741"]
-            }
+  "Version": "2020-12-01",
+  "Metadata": {},
+  "Parameters": [],
+  "PipelineExperimentConfig": {
+    "ExperimentName": "newschain-clustering-experiment",
+    "TrialName": "newschain-clustering-trial"
+  },
+  "Steps": [
+    {
+      "Name": "ClusteringJob",
+      "Type": "Processing",
+      "Arguments": {
+        "ProcessingJobName": "newschain-clustering-job",
+        "ProcessingResources": {
+          "ClusterConfig": {
+            "InstanceCount": 1,
+            "InstanceType": "ml.t3.medium",
+            "VolumeSizeInGB": 30
+          }
+        },
+        "AppSpecification": {
+          "ImageUri": "858286809900.dkr.ecr.us-east-2.amazonaws.com/newschain-clustering:latest",
+          "ContainerEntrypoint": ["python", "/app/cluster_articles.py"],
+          "ContainerArguments": [
+            "--execution-id",
+            "{PipelineExecutionArn}"
+          ]
+        },
+        "RoleArn": "arn:aws:iam::858286809900:role/service-role/AmazonSageMaker-ExecutionRole-20250327T115006",
+        "ProcessingInputs": [],
+        "NetworkConfig": {
+          "EnableNetworkIsolation": false,
+          "VpcConfig": {
+            "Subnets": ["subnet-01838092148514c1f"],
+            "SecurityGroupIds": ["sg-021a4fa306a0b0741"]
           }
         }
       }
-    ]
-  }
+    }
+  ]
+}

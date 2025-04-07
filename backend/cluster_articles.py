@@ -5,6 +5,8 @@ import boto3
 from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 import hdbscan
+import argparse
+import numpy as np
 
 # Database connection parameters
 DB_PARAMS = {
@@ -19,12 +21,7 @@ DB_PARAMS = {
 BUCKET_NAME = "newschain-bucket"
 S3_CLIENT = boto3.client('s3')
 
-def cluster_articles():
-    # Get execution_id from environment variable
-    execution_id = os.getenv('EXECUTION_ID')
-    if not execution_id:
-        raise ValueError("EXECUTION_ID environment variable not set")
-
+def cluster_articles(execution_id):
     # Connect to RDS
     conn = psycopg2.connect(**DB_PARAMS)
     cur = conn.cursor()
@@ -51,18 +48,20 @@ def cluster_articles():
 
     # Cluster using HDBSCAN
     clusterer = hdbscan.HDBSCAN(min_cluster_size=5, min_samples=1)
-    labels = clusterer.fit_predict(X)
+    labels = clusterer.fit_predict(X).tolist()  # Convert NumPy array to list of Python integers
     print(f"Found {len(set(labels)) - (1 if -1 in labels else 0)} clusters (-1 is noise, {list(labels).count(-1)} articles).")
 
     # Update articles with cluster labels and execution_id
     for article_id, label in zip(article_ids, labels):
+        # Set hdbscan_cluster to NULL for noise points (-1)
+        cluster_value = label if label != -1 else None
         cur.execute(
             "UPDATE articles SET hdbscan_cluster = %s, execution_id = %s WHERE id = %s",
-            (label, execution_id, article_id)
+            (cluster_value, execution_id, article_id)
         )
 
-    # Insert clusters into cluster_status
-    unique_clusters = set(labels)
+    # Insert clusters into cluster_status, excluding noise points (-1)
+    unique_clusters = set(label for label in labels if label != -1)  # Exclude noise points
     for cluster in unique_clusters:
         cur.execute(
             "INSERT INTO cluster_status (execution_id, hdbscan_cluster, status, reviewed_at, summarized, updated_by) "
@@ -87,4 +86,7 @@ def cluster_articles():
     conn.close()
 
 if __name__ == "__main__":
-    cluster_articles()
+    parser = argparse.ArgumentParser(description="Cluster articles using HDBSCAN")
+    parser.add_argument("--execution-id", required=True, help="SageMaker pipeline execution ARN")
+    args = parser.parse_args()
+    cluster_articles(args.execution_id)
