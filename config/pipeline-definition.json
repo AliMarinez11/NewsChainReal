@@ -21,10 +21,20 @@
           },
           "AppSpecification": {
             "ImageUri": "858286809900.dkr.ecr.us-east-2.amazonaws.com/newschain-clustering:latest",
-            "ContainerEntrypoint": ["python", "/app/cluster_articles.py"]
+            "ContainerEntrypoint": ["python", "/app/cluster_articles.py"],
+            "Environment": {
+              "EXECUTION_ID": "{PipelineExecutionArn}"
+            }
           },
           "RoleArn": "arn:aws:iam::858286809900:role/service-role/AmazonSageMaker-ExecutionRole-20250327T115006",
-          "ProcessingInputs": []
+          "ProcessingInputs": [],
+          "NetworkConfig": {
+            "EnableNetworkIsolation": false,
+            "VpcConfig": {
+              "Subnets": ["subnet-01838092148514c1f"],
+              "SecurityGroupIds": ["sg-021a4fa306a0b0741"]
+            }
+          }
         }
       }
     ]
