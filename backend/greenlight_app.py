@@ -104,7 +104,7 @@ def validate_cluster():
     if not all([execution_id, cluster_id is not None, is_valid is not None]):
         return jsonify({"error": "execution_id, cluster_id, and is_valid are required"}), 400
 
-    status = "greenlit" if is_valid else "invalid"
+    status = True if is_valid else False
 
     try:
         conn = get_db_connection()
