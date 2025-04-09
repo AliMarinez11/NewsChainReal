@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const root = document.getElementById('root');
 
-    fetch('http://localhost:8000/narratives')  // Update to EC2 IP post-deployment
+    fetch('http://3.12.41.154:8000/narratives')  // Updated to EC2 IP
         .then(response => response.json())
         .then(narratives => {
             narratives.forEach(narrative => {

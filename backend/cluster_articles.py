@@ -68,6 +68,16 @@ def cluster_articles(execution_id):
             (cluster_value, execution_id, article_id)
         )
 
+    # Insert into article_cluster_history
+    print("Inserting article cluster history...")
+    for article_id, label in zip(article_ids, labels):
+        cluster_value = label if label != -1 else None
+        cur.execute(
+            "INSERT INTO article_cluster_history (article_id, execution_id, hdbscan_cluster) "
+            "VALUES (%s, %s, %s)",
+            (article_id, execution_id, cluster_value)
+        )
+
     # Clear previous cluster_status for this execution_id
     print("Clearing previous cluster_status...")
     cur.execute("DELETE FROM cluster_status WHERE execution_id = %s", (execution_id,))
