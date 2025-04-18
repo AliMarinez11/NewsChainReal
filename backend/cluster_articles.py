@@ -87,9 +87,9 @@ def cluster_articles(execution_id):
     unique_clusters = set(label for label in labels if label != -1)
     for cluster in unique_clusters:
         cur.execute(
-            "INSERT INTO cluster_status (execution_id, hdbscan_cluster, status, reviewed_at, summarized, updated_by) "
-            "VALUES (%s, %s, NULL, NULL, FALSE, 'system')",
-            (execution_id, cluster)
+    "INSERT INTO cluster_status (execution_id, hdbscan_cluster, status, reviewed_at, summarized, updated_by, created_at) "
+    "VALUES (%s, %s, NULL, NULL, FALSE, 'system', NOW())",
+    (execution_id, cluster)
         )
 
     print("Committing changes...")

@@ -14,7 +14,7 @@ DB_PARAMS = {
 }
 BUCKET_NAME = "newschain-bucket"
 S3_CLIENT = boto3.client('s3')
-XAI_API_URL = "https://api.x.ai/v1/chat/completions"
+XAI_API_URL = "https://api.x.ai/v1/completions"
 XAI_API_KEY = "xai-sw099z6S2UmYxqv8uWMQGpXM8nn8TKhTWXC6NfHFRJFgTBqNjOCiWBxravDvBBJ7Si6PZ2rRGgazkfs8"
 
 PROMPT = """
@@ -24,11 +24,12 @@ Grok, you are provided with a cluster of news articles, each including the follo
 2. **Neutral Summary**: Review all articles in the cluster and provide a 100-150 word summary of the story that is as neutral and unbiased as possible, focusing on factual overlap and key events across all sources.
 3. **Left-Leaning Angle**: Based solely on the content and framing of articles from left-leaning sources (e.g., CNN, HuffPost) within the cluster, provide a 40 word maximum angle reflecting how these sources portray the story. Incorporate relevant X sentiment from left-leaning users or posts aligning with this perspective, if available.
 4. **Right-Leaning Angle**: Based solely on the content and framing of articles from right-leaning sources (e.g., Fox News, Daily Caller) within the cluster, provide a 40 word maximum angle reflecting how these sources portray the story. Incorporate relevant X sentiment from right-leaning users or posts aligning with this perspective, if available.
-5. **Reasonableness Score**: On a scale from -1 (left-leaning angle is unreasonable) to 0 (both angles are reasonable) to 1 (right-leaning angle is unreasonable), score which angle aligns more closely with the factual content of all articles and X sentiment. Unreasonable means the angle distorts facts or sounds "crazy" relative to the evidence.
-6. **Reasonableness Reason**: Provide a 15-word max explanation for the reasonableness score, justifying the assessment.
+5. **Left Reasonableness Score**: On a scale from 0 (illogical, contradicts verifiable facts in articles or X sentiment) to 1 (logically consistent, fully supported by evidence), score the left-leaning angle’s adherence to facts and logical coherence.
+6. **Right Reasonableness Score**: On a scale from 0 (illogical, contradicts evidence) to 1 (logically consistent, supported), score the right-leaning angle’s adherence to facts and logical coherence.
+7. **Reasonableness Reason**: In 15 words max, explain both scores, citing specific evidence or contradictions in articles/X sentiment.
 
 Input: JSON array of articles [{id, title, content, source, url}, ...]
-Output: JSON {title, summary, left_angle, right_angle, reasonableness_score, reasonableness_reason}
+Output: JSON {title, summary, left_angle, right_angle, left_reasonableness_score, right_reasonableness_score, reasonableness_reason}
 """
 
 def lambda_handler(event, context):
@@ -73,17 +74,16 @@ def lambda_handler(event, context):
             continue
         # Call xAI Grok API
         payload = {
-            "model": "grok-2-latest",
-            "messages": [
-                {"role": "system", "content": PROMPT},
-                {"role": "user", "content": json.dumps({"articles": articles})}
-            ]
+            "model": "grok-3-beta",
+            "prompt": PROMPT + "\n\nInput: " + json.dumps({"articles": articles}),
+            "max_tokens": 1000,
+            "temperature": 0.7
         }
         headers = {"Authorization": f"Bearer {XAI_API_KEY}", "Content-Type": "application/json"}
         response = requests.post(XAI_API_URL, json=payload, headers=headers)
         if response.status_code == 200:
             result = response.json()
-            grok_response = json.loads(result['choices'][0]['message']['content'].strip('```json\n').strip('\n```'))
+            grok_response = json.loads(result['choices'][0]['text'].strip('```json\n').strip('\n```'))
             articles_json = json.dumps([
                 {"id": a["id"], "url": a["url"], "source": a["source"]}
                 for a in articles
@@ -92,9 +92,9 @@ def lambda_handler(event, context):
             cur.execute("""
                 INSERT INTO pending_narratives (
                     cluster_id, title, summary, left_angle, right_angle, articles, 
-                    date_added, execution_id, reasonableness_score, reasonableness_reason
+                    date_added, execution_id, left_reasonableness_score, right_reasonableness_score, reasonableness_reason
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 cluster_id,
                 grok_response.get("title"),
@@ -104,7 +104,8 @@ def lambda_handler(event, context):
                 articles_json,
                 datetime.utcnow(),
                 execution_id,
-                grok_response.get("reasonableness_score"),
+                grok_response.get("left_reasonableness_score"),
+                grok_response.get("right_reasonableness_score"),
                 grok_response.get("reasonableness_reason")
             ))
             print(f"Inserted narrative for cluster {cluster_id} in {execution_id}")

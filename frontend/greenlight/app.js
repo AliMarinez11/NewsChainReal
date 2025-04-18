@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     // Fetch clusters when an execution ID is selected
-    executionSelect.addEventListener('change', () => {
+    executionSelect.addEventListener('change', async () => {
         const executionId = executionSelect.value;
         if (!executionId) {
             clustersDiv.innerHTML = '';
@@ -41,31 +41,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         errorDiv.textContent = '';
-        fetch(`/clusters?execution_id=${encodeURIComponent(executionId)}`)
-            .then(response => {
-                if (!response.ok) throw new Error('Failed to fetch clusters');
-                return response.json();
-            })
-            .then(clusters => {
-                clustersDiv.innerHTML = '';
-                clusters.forEach(cluster => {
-                    const div = document.createElement('div');
-                    div.className = 'cluster';
-                    div.innerHTML = `
-                        <h2>Cluster ${cluster.cluster_id} (${cluster.size} articles)</h2>
-                        <p>Status: ${cluster.status || 'Not Reviewed'}</p>
-                        <ul>
-                            ${cluster.sample.map(s => `<li>${s.title} (${s.source})</li>`).join('')}
-                        </ul>
-                        <button onclick="validate('${executionId}', ${cluster.cluster_id}, true)">Valid</button>
-                        <button onclick="validate('${executionId}', ${cluster.cluster_id}, false)">Not Valid</button>
-                    `;
-                    clustersDiv.appendChild(div);
-                });
-            })
-            .catch(error => {
-                errorDiv.textContent = error.message;
+        try {
+            // Call /previous_validations to perform inheritance
+            const prevResponse = await fetch(`/previous_validations?execution_id=${encodeURIComponent(executionId)}`);
+            if (!prevResponse.ok) throw new Error('Failed to fetch previous validations');
+            const prevData = await prevResponse.json();
+            console.log('Previous validations:', prevData); // Debug log
+
+            // Then fetch clusters
+            const response = await fetch(`/clusters?execution_id=${encodeURIComponent(executionId)}`);
+            if (!response.ok) throw new Error('Failed to fetch clusters');
+            const clusters = await response.json();
+            clustersDiv.innerHTML = '';
+            clusters.forEach(cluster => {
+                const div = document.createElement('div');
+                div.className = 'cluster';
+                div.innerHTML = `
+                    <h2>Cluster ${cluster.cluster_id} (${cluster.size} articles)</h2>
+                    <p>Status: ${cluster.status || 'Not Reviewed'}</p>
+                    <ul>
+                        ${cluster.sample.map(s => `<li>${s.title} (${s.source})</li>`).join('')}
+                    </ul>
+                    <button onclick="validate('${executionId}', ${cluster.cluster_id}, true)">Valid</button>
+                    <button onclick="validate('${executionId}', ${cluster.cluster_id}, false)">Not Valid</button>
+                `;
+                clustersDiv.appendChild(div);
             });
+        } catch (error) {
+            errorDiv.textContent = error.message;
+        }
     });
 
     window.validate = (executionId, clusterId, isValid) => {

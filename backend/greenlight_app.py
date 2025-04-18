@@ -52,21 +52,26 @@ def get_previous_validations():
         cur = conn.cursor()
         # Get previous execution_id with validated clusters
         cur.execute("""
-            SELECT MAX(execution_id)
+            SELECT execution_id
             FROM cluster_status
-            WHERE execution_id < %s AND status IS NOT NULL
+            WHERE created_at < (SELECT MAX(created_at) FROM cluster_status WHERE execution_id = %s)
+            AND status IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 1
         """, (current_execution_id,))
-        prev_execution_id = cur.fetchone()[0]
+        prev_execution_id = cur.fetchone()
         if not prev_execution_id:
             cur.close()
             conn.close()
             return jsonify([])
-        # Compare clusters
+        prev_execution_id = prev_execution_id[0]
+        # Fetch articles for clusters
         cur.execute("""
-            SELECT a.execution_id, a.hdbscan_cluster, array_agg(a.article_id) AS articles
-            FROM article_cluster_history a
-            WHERE a.execution_id IN (%s, %s)
-            GROUP BY a.execution_id, a.hdbscan_cluster
+            SELECT ach.execution_id, ach.hdbscan_cluster, array_agg(json_build_object('url', a.url, 'title', a.title)) AS articles
+            FROM article_cluster_history ach
+            JOIN articles a ON ach.article_id = a.id
+            WHERE ach.execution_id IN (%s, %s)
+            GROUP BY ach.execution_id, ach.hdbscan_cluster
         """, (current_execution_id, prev_execution_id))
         cluster_articles = cur.fetchall()
         prev_clusters = {row[1]: row[2] for row in cluster_articles if row[0] == prev_execution_id}
@@ -79,8 +84,10 @@ def get_previous_validations():
         """, (prev_execution_id,))
         prev_statuses = {row[0]: row[1] for row in cur.fetchall()}
         for curr_cluster, curr_articles in current_clusters.items():
+            curr_hash = hash(frozenset(sorted((article['url'], article['title']) for article in curr_articles)))
             for prev_cluster, prev_articles in prev_clusters.items():
-                if set(curr_articles) == set(prev_articles) and prev_cluster in prev_statuses:
+                prev_hash = hash(frozenset(sorted((article['url'], article['title']) for article in prev_articles)))
+                if curr_hash == prev_hash and prev_cluster in prev_statuses:
                     matches.append({
                         "current_cluster": curr_cluster,
                         "previous_cluster": prev_cluster,
@@ -92,15 +99,14 @@ def get_previous_validations():
                         SET status = %s, reviewed_at = %s, updated_by = 'system'
                         WHERE execution_id = %s AND hdbscan_cluster = %s
                     """, (prev_statuses[prev_cluster], datetime.now(), current_execution_id, curr_cluster))
-                    # Copy narrative to pending_narratives if status=true
                     if prev_statuses[prev_cluster]:
                         cur.execute("""
                             INSERT INTO pending_narratives (
                                 cluster_id, title, summary, left_angle, right_angle, articles, 
-                                date_added, execution_id, reasonableness_score, reasonableness_reason
+                                date_added, execution_id, left_reasonableness_score, right_reasonableness_score, reasonableness_reason
                             )
                             SELECT cluster_id, title, summary, left_angle, right_angle, articles, 
-                                   %s, %s, reasonableness_score, reasonableness_reason
+                                   %s, %s, left_reasonableness_score, right_reasonableness_score, reasonableness_reason
                             FROM narratives
                             WHERE execution_id = %s AND cluster_id = %s
                         """, (datetime.now(), current_execution_id, prev_execution_id, prev_cluster))
@@ -217,10 +223,10 @@ def validate_cluster():
             cur.execute("""
                 INSERT INTO narratives (
                     cluster_id, title, summary, left_angle, right_angle, articles, 
-                    date_added, execution_id, reasonableness_score, reasonableness_reason
+                    date_added, execution_id, left_reasonableness_score, right_reasonableness_score, reasonableness_reason
                 )
                 SELECT cluster_id, title, summary, left_angle, right_angle, articles, 
-                       date_added, execution_id, reasonableness_score, reasonableness_reason
+                       date_added, execution_id, left_reasonableness_score, right_reasonableness_score, reasonableness_reason
                 FROM pending_narratives
                 WHERE execution_id = %s
             """, (execution_id,))
